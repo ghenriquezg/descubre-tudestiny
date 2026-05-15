@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cielo Estrellado</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Raleway:wght@300;400&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --star-color: #fff;
+      --glow: #a8d8ff;
+      --btn-bg: rgba(255,255,255,0.06);
+      --btn-border: rgba(168,216,255,0.4);
+      --accent: #a8d8ff;
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: #000;
+    }
+
+    /* ── Canvas de estrellas ── */
+    #stars-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+    }
+
+    /* ── Nebulosa de fondo ── */
+    .nebula {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      background:
+        radial-gradient(ellipse 80% 50% at 20% 30%, rgba(30,0,80,0.55) 0%, transparent 70%),
+        radial-gradient(ellipse 60% 40% at 80% 70%, rgba(0,20,70,0.5) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 60% at 55% 10%, rgba(0,40,80,0.3) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    /* ── Centro ── */
+    .center {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2.5rem;
+    }
+
+    /* Título sutil */
+    .tagline {
+      font-family: 'Raleway', sans-serif;
+      font-weight: 300;
+      font-size: clamp(0.75rem, 1.5vw, 1rem);
+      letter-spacing: 0.45em;
+      text-transform: uppercase;
+      color: rgba(168,216,255,0.55);
+      opacity: 0;
+      animation: fadeUp 1.2s ease 0.4s forwards;
+    }
+
+    /* ── Botón rojo físico ── */
+
+    /* Base/pedestal del botón */
+    .btn-wrap {
+      position: relative;
+      width: clamp(120px, 17vw, 170px);
+      height: clamp(120px, 17vw, 170px);
+      opacity: 0;
+      animation: fadeUp 1.2s ease 0.7s forwards;
+    }
+
+    /* Sombra/base cilíndrica */
+    .btn-base {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 88%;
+      height: 88%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 50% 60%, #1a0000 0%, #3b0000 60%, #200000 100%);
+      box-shadow:
+        0 14px 0 #0d0000,
+        0 16px 30px rgba(0,0,0,0.7),
+        0 0 40px rgba(180,0,0,0.15);
+    }
+
+    /* La cúpula presionable */
+    .star-btn {
+      position: absolute;
+      top: 0; left: 50%;
+      transform: translateX(-50%);
+      width: 88%;
+      height: 88%;
+      border-radius: 50%;
+      border: none;
+      outline: none;
+      cursor: pointer;
+
+      /* Gradiente que da efecto de esfera 3D */
+      background:
+        radial-gradient(circle at 38% 32%, rgba(255,120,120,0.9) 0%, transparent 50%),
+        radial-gradient(circle at 60% 65%, rgba(80,0,0,0.6) 0%, transparent 55%),
+        radial-gradient(circle at 50% 50%, #cc1010 0%, #8b0000 55%, #4a0000 100%);
+
+      box-shadow:
+        0 6px 0 #5a0000,
+        0 10px 0 #300000,
+        0 12px 25px rgba(0,0,0,0.6),
+        0 0 50px rgba(220,20,20,0.35),
+        0 0 100px rgba(180,0,0,0.15),
+        inset 0 2px 8px rgba(255,160,160,0.3),
+        inset 0 -4px 10px rgba(0,0,0,0.4);
+
+      transition:
+        transform 0.08s ease,
+        box-shadow 0.08s ease,
+        top 0.08s ease;
+
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+    }
+
+    /* Reflejo especular */
+    .star-btn::before {
+      content: '';
+      position: absolute;
+      top: 14%;
+      left: 20%;
+      width: 35%;
+      height: 22%;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.28);
+      filter: blur(4px);
+      transform: rotate(-20deg);
+      pointer-events: none;
+    }
+
+    /* Anillo de luz exterior (glow rojo) */
+    .star-btn::after {
+      content: '';
+      position: absolute;
+      inset: -8px;
+      border-radius: 50%;
+      background: transparent;
+      box-shadow: 0 0 22px 4px rgba(255,40,40,0.2);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .star-btn:hover::after { opacity: 1; }
+
+    .star-btn:hover {
+      box-shadow:
+        0 6px 0 #5a0000,
+        0 10px 0 #300000,
+        0 14px 28px rgba(0,0,0,0.6),
+        0 0 70px rgba(255,30,30,0.5),
+        0 0 130px rgba(200,0,0,0.2),
+        inset 0 2px 8px rgba(255,160,160,0.35),
+        inset 0 -4px 10px rgba(0,0,0,0.4);
+    }
+
+    /* Efecto al presionar: baja y pierde sombra inferior */
+    .star-btn:active {
+      top: 8px;
+      box-shadow:
+        0 2px 0 #5a0000,
+        0 4px 0 #300000,
+        0 5px 14px rgba(0,0,0,0.5),
+        0 0 50px rgba(255,30,30,0.4),
+        inset 0 2px 12px rgba(0,0,0,0.5),
+        inset 0 -2px 6px rgba(255,100,100,0.2);
+    }
+
+    /* Icono dentro del botón */
+    .star-icon {
+      width: clamp(28px, 4.5vw, 42px);
+      height: clamp(28px, 4.5vw, 42px);
+      fill: none;
+      stroke: rgba(255,220,220,0.9);
+      stroke-width: 1.5;
+      filter: drop-shadow(0 0 4px rgba(255,180,180,0.7));
+      transition: filter 0.2s ease;
+      position: relative;
+      z-index: 1;
+    }
+    .star-btn:hover .star-icon {
+      filter: drop-shadow(0 0 10px rgba(255,200,200,0.9));
+    }
+
+    .btn-label {
+      font-family: 'Raleway', sans-serif;
+      font-weight: 600;
+      font-size: clamp(0.55rem, 1.1vw, 0.72rem);
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: rgba(255,210,210,0.85);
+      text-shadow: 0 1px 4px rgba(0,0,0,0.6);
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── Mensaje personalizado ── */
+    .message-box {
+      max-width: min(90vw, 620px);
+      padding: 2rem 2.5rem;
+      border-radius: 6px;
+      border: 1px solid rgba(168,216,255,0.2);
+      background: rgba(0,5,20,0.72);
+      backdrop-filter: blur(16px);
+      text-align: center;
+      box-shadow: 0 0 60px rgba(168,216,255,0.08);
+      opacity: 0;
+      transform: translateY(18px) scale(0.97);
+      pointer-events: none;
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .message-box.visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      pointer-events: auto;
+    }
+
+    /* Imagen personalizada */
+    .custom-img {
+      width: 100%;
+      max-height: 220px;
+      object-fit: cover;
+      border-radius: 4px;
+      margin-bottom: 1.4rem;
+      border: 1px solid rgba(168,216,255,0.15);
+      box-shadow: 0 0 30px rgba(168,216,255,0.1);
+      display: block;
+    }
+
+    /* Ocultar imagen si no carga */
+    .custom-img[src="TU_URL_AQUI"],
+    .custom-img:not([src]) { display: none; }
+
+    .message-box h2 {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(1.1rem, 2.5vw, 1.6rem);
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.75rem;
+      text-shadow: 0 0 20px rgba(168,216,255,0.5);
+    }
+
+    .message-box p {
+      font-family: 'Raleway', sans-serif;
+      font-weight: 300;
+      font-size: clamp(0.85rem, 1.5vw, 1rem);
+      line-height: 1.8;
+      color: rgba(200,225,255,0.8);
+    }
+
+    .message-box .close-btn {
+      margin-top: 1.4rem;
+      font-family: 'Raleway', sans-serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: rgba(168,216,255,0.5);
+      background: none;
+      border: 1px solid rgba(168,216,255,0.2);
+      border-radius: 2px;
+      padding: 0.45rem 1.2rem;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .message-box .close-btn:hover {
+      color: var(--accent);
+      border-color: rgba(168,216,255,0.5);
+    }
+
+    /* ── Animaciones de entrada ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Partícula al click */
+    .burst {
+      position: fixed;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #ff4444;
+      pointer-events: none;
+      z-index: 99;
+      animation: burst 0.7s ease-out forwards;
+    }
+    @keyframes burst {
+      from { transform: translate(0,0) scale(1); opacity: 1; }
+      to   { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="stars-canvas"></canvas>
+  <div class="nebula"></div>
+
+  <div class="center">
+    <span class="tagline">DESCUBRE TU DESTINOOI</span>
+
+    <div class="btn-wrap">
+      <div class="btn-base"></div>
+      <button class="star-btn" id="mainBtn" aria-label="Mostrar mensaje">
+        <svg class="star-icon" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+          <line x1="24" y1="4"  x2="24" y2="44"/>
+          <line x1="4"  y1="24" x2="44" y2="24"/>
+          <line x1="9"  y1="9"  x2="39" y2="39"/>
+          <line x1="39" y1="9"  x2="9"  y2="39"/>
+          <circle cx="24" cy="24" r="5"/>
+        </svg>
+        <span class="btn-label">Pulsar</span>
+      </button>
+    </div>
+
+    <div class="message-box" id="msgBox">
+
+      <!-- ============================================
+           IMAGEN: reemplaza TU_URL_AQUI con tu enlace
+           ============================================ -->
+      <img
+        class="custom-img"
+        src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTJQjuP1D_PyNV1EeFAhXArULIuZ8Yv8EL7Og&s"
+        alt="Imagen personalizada"
+        onerror="this.style.display='none'"
+      />
+
+      <!-- ============================================
+           TÍTULO: escribe tu título aquí abajo
+           ============================================ -->
+      <h2>✦ CHUPAME LAS BOLAS ✦</h2>
+
+      <!-- ============================================
+           TEXTO: escribe tu mensaje aquí abajo
+           ============================================ -->
+      <p>
+        SAKATE UNO SAKATE UNO SAKATE UNO SAKATE UNO SAKATE UNO
+        SAKATE UNO SAKATE UNO SAKATE UNOS CUANTOS SAKATE UNO SAKATE
+        SAKATE UNO SAKATE UNO SAKATE UNO SAKATE UNO SAKATE
+      </p>
+
+      <button class="close-btn" id="closeBtn">Cerrar</button>
+    </div>
+  </div>
+
+  <script>
+    /* ── Generador de estrellas en canvas ── */
+    (function() {
+      const canvas = document.getElementById('stars-canvas');
+      const ctx = canvas.getContext('2d');
+      let stars = [];
+      const NUM = 320;
+
+      function resize() {
+        canvas.width  = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+
+      function initStars() {
+        stars = [];
+        for (let i = 0; i < NUM; i++) {
+          stars.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            r: Math.random() * 1.3 + 0.2,
+            alpha: Math.random(),
+            speed: Math.random() * 0.005 + 0.002,
+            phase: Math.random() * Math.PI * 2
+          });
+        }
+      }
+
+      function draw(t) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        stars.forEach(s => {
+          const a = 0.3 + 0.7 * Math.abs(Math.sin(t * s.speed + s.phase));
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255,255,255,${a})`;
+          ctx.fill();
+        });
+        requestAnimationFrame(draw);
+      }
+
+      window.addEventListener('resize', () => { resize(); initStars(); });
+      resize();
+      initStars();
+      requestAnimationFrame(draw);
+    })();
+
+    /* ── Lógica del botón ── */
+    const btn    = document.getElementById('mainBtn');
+    const msgBox = document.getElementById('msgBox');
+    const closeBtn = document.getElementById('closeBtn');
+
+    function spawnBurst(x, y) {
+      for (let i = 0; i < 12; i++) {
+        const el = document.createElement('div');
+        el.className = 'burst';
+        const angle = (i / 12) * Math.PI * 2;
+        const dist  = 40 + Math.random() * 40;
+        el.style.left = x + 'px';
+        el.style.top  = y + 'px';
+        el.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+        el.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 700);
+      }
+    }
+
+    btn.addEventListener('click', (e) => {
+      const rect = btn.getBoundingClientRect();
+      spawnBurst(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      msgBox.classList.toggle('visible');
+    });
+
+    closeBtn.addEventListener('click', () => {
+      msgBox.classList.remove('visible');
+    });
+  </script>
+</body>
+</html>
